@@ -253,4 +253,8 @@ app.use((error, _req, res, _next) => {
   res.status(status).json({ error: message, details: isValidation ? error.issues : undefined })
 })
 
-app.listen(port, '127.0.0.1', () => console.log(`Runts Coach API em http://127.0.0.1:${port}`))
+export default app
+
+if (!process.env.VERCEL) {
+  app.listen(port, '127.0.0.1', () => console.log(`Runts Coach API em http://127.0.0.1:${port}`))
+}
