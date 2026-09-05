@@ -1,0 +1,8 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.Runts" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Customization for Compose app -->
+    </style>
+
+    <style name="Theme.Runts" parent="Base.Theme.Runts" />
+</resources>

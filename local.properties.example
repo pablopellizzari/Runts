@@ -1,0 +1,6 @@
+sdk.dir=C\:\\Users\\<seu-usuario>\\AppData\\Local\\Android\\Sdk
+# Credenciais apenas para desenvolvimento local. Nunca versione este arquivo preenchido.
+NEON_HOST=ep-dry-salad-ac3k5j6z-pooler.sa-east-1.aws.neon.tech
+NEON_DATABASE=neondb
+NEON_USER=neondb_owner
+NEON_PASSWORD=npg_Cdc1ZzmAJ4Lt
