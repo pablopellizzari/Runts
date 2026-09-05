@@ -133,7 +133,7 @@ fun RegisterAccountScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            placeholder = { Text("Mínimo 6 caracteres", color = TextMuted) },
+            placeholder = { Text("Mínimo 8 caracteres", color = TextMuted) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 24.dp),
@@ -150,8 +150,8 @@ fun RegisterAccountScreen(
 
         Button(
             onClick = {
-                if (name.isBlank() || email.isBlank() || password.length < 6) {
-                    localError = "Preencha todos os campos corretamente (senha mín. 6 caracteres)."
+                if (name.isBlank() || email.isBlank() || password.length < 8) {
+                    localError = "Preencha todos os campos corretamente (senha mín. 8 caracteres)."
                 } else {
                     localError = ""
                     authViewModel.register(name.trim(), email.trim(), password.trim(), UserType.ATHLETE)

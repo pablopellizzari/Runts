@@ -20,6 +20,8 @@ data class WorkoutExecutionEntity(
     val pse: Int,
     val encryptedGpsDataJson: String? = null,
     val comments: String? = null,
+    val sourceProvider: String? = null,
+    val sourceActivityId: String? = null,
     val pendingSync: Boolean = false
 )
 
@@ -35,6 +37,8 @@ fun WorkoutExecutionEntity.toDomain() = WorkoutExecution(
     pse = pse,
     encryptedGpsDataJson = encryptedGpsDataJson,
     comments = comments,
+    sourceProvider = sourceProvider,
+    sourceActivityId = sourceActivityId,
     pendingSync = pendingSync
 )
 
@@ -50,5 +54,7 @@ fun WorkoutExecution.toEntity() = WorkoutExecutionEntity(
     pse = pse,
     encryptedGpsDataJson = encryptedGpsDataJson,
     comments = comments,
+    sourceProvider = sourceProvider,
+    sourceActivityId = sourceActivityId,
     pendingSync = pendingSync
 )

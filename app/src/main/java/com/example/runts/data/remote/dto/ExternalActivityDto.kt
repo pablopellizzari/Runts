@@ -13,5 +13,6 @@ data class ExternalActivityDto(
     @SerializedName("moving_time_seconds") val movingTimeSeconds: Int,
     @SerializedName("average_speed_mps") val averageSpeedMps: Double,
     @SerializedName("average_heartrate") val averageHeartRate: Int?,
-    @SerializedName("start_date_local") val startDateLocal: String
+    @SerializedName("start_date_local") val startDateLocal: String,
+    @SerializedName("pace") val pace: String? = null
 )

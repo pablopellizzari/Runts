@@ -14,7 +14,8 @@ class RegisterWorkoutExecutionUseCase @Inject constructor(
     suspend operator fun invoke(
         prescribedWorkoutId: String?, athleteId: String, executionDate: String,
         actualDistanceKm: Double, actualDurationSeconds: Int, actualPace: String,
-        actualAvgHeartRate: Int?, pse: Int, rawGpsDataJson: String?, comments: String?
+        actualAvgHeartRate: Int?, pse: Int, rawGpsDataJson: String?, comments: String?,
+        sourceProvider: String? = null, sourceActivityId: String? = null
     ): Result<Unit> = resultOf {
         val workout = prescribedWorkoutId?.let { workoutRepository.getWorkoutById(it) }
         val execution = WorkoutExecution(
@@ -26,7 +27,8 @@ class RegisterWorkoutExecutionUseCase @Inject constructor(
                 ?: TrainingRules.pace(actualDistanceKm, actualDurationSeconds),
             actualAvgHeartRate = actualAvgHeartRate, pse = pse,
             encryptedGpsDataJson = rawGpsDataJson?.let { encryptedStorageManager.encryptSensitiveHealthData(it) },
-            comments = comments?.trim()?.takeIf { it.isNotEmpty() }, pendingSync = true
+            comments = comments?.trim()?.takeIf { it.isNotEmpty() },
+            sourceProvider = sourceProvider, sourceActivityId = sourceActivityId, pendingSync = true
         )
         TrainingRules.execution(execution, workout)
         require(workout == null || workout.status == WorkoutStatus.PENDING) { "Este treino já foi concluído ou cancelado." }

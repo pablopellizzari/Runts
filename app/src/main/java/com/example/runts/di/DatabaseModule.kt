@@ -28,7 +28,7 @@ object DatabaseModule {
             context,
             RuntsDatabase::class.java,
             "runts_database.db"
-        ).addMigrations(com.example.runts.data.local.DatabaseMigrations.ALL[0]).build()
+        ).addMigrations(*com.example.runts.data.local.DatabaseMigrations.ALL).build()
     }
 
     @Provides

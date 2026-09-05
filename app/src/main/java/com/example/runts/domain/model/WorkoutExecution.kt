@@ -15,5 +15,7 @@ data class WorkoutExecution(
     val pse: Int,                            // Percepção Subjetiva de Esforço (1-10)
     val encryptedGpsDataJson: String? = null, // Dados sensíveis de geolocalização e relógio
     val comments: String? = null,             // Feedback do atleta
+    val sourceProvider: String? = null,
+    val sourceActivityId: String? = null,
     val pendingSync: Boolean = false
 )

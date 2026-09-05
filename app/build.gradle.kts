@@ -51,6 +51,8 @@ android {
         buildConfigField("String", "NEON_DATABASE", "\"${localValue("NEON_DATABASE")}\"")
         buildConfigField("String", "NEON_USER", "\"${localValue("NEON_USER")}\"")
         buildConfigField("String", "NEON_PASSWORD", "\"${localValue("NEON_PASSWORD")}\"")
+        val backendUrl = localValue("RUNTS_API_BASE_URL").ifBlank { "https://runts-eta.vercel.app/api/" }
+        buildConfigField("String", "RUNTS_API_BASE_URL", "\"$backendUrl\"")
     }
 }
 

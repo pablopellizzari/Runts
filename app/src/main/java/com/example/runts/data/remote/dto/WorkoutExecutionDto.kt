@@ -14,7 +14,9 @@ data class WorkoutExecutionDto(
     @SerializedName("actual_avg_hr") val actualAvgHeartRate: Int? = null,
     @SerializedName("pse") val pse: Int,
     @SerializedName("encrypted_gps_data_json") val encryptedGpsDataJson: String? = null,
-    @SerializedName("comments") val comments: String? = null
+    @SerializedName("comments") val comments: String? = null,
+    @SerializedName("source_provider") val sourceProvider: String? = null,
+    @SerializedName("source_activity_id") val sourceActivityId: String? = null
 )
 
 fun WorkoutExecutionDto.toDomain() = WorkoutExecution(
@@ -29,5 +31,7 @@ fun WorkoutExecutionDto.toDomain() = WorkoutExecution(
     pse = pse,
     encryptedGpsDataJson = encryptedGpsDataJson,
     comments = comments,
+    sourceProvider = sourceProvider,
+    sourceActivityId = sourceActivityId,
     pendingSync = false
 )

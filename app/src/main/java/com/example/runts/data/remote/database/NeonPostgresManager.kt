@@ -135,7 +135,8 @@ class NeonPostgresManager @Inject constructor() {
         val insert = upsert("workout_executions",linkedMapOf("id" to e.id,"prescribed_workout_id" to e.prescribedWorkoutId,
             "athlete_id" to e.athleteId,"execution_date" to e.executionDate,"actual_distance_km" to e.actualDistanceKm,
             "actual_duration_seconds" to e.actualDurationSeconds,"actual_pace" to e.actualPace,
-            "actual_avg_hr" to e.actualAvgHeartRate,"pse" to e.pse,"encrypted_gps_data_json" to e.encryptedGpsDataJson,"comments" to e.comments),
+            "actual_avg_hr" to e.actualAvgHeartRate,"pse" to e.pse,"encrypted_gps_data_json" to e.encryptedGpsDataJson,"comments" to e.comments,
+            "source_provider" to e.sourceProvider,"source_activity_id" to e.sourceActivityId),
             setOf("id","athlete_id","prescribed_workout_id"))
         transaction(listOfNotNull(insert,e.prescribedWorkoutId?.let {
             query("UPDATE workouts SET status='COMPLETED' WHERE id=$1 AND athlete_id=$2",it,e.athleteId)
@@ -163,7 +164,7 @@ class NeonPostgresManager @Inject constructor() {
     private fun user(r: JsonObject) = User(r.string("id"),r.string("name"),r.string("email"),UserType.valueOf(r.string("user_type")),r.nullable("coach_id"),r.nullable("invite_code"))
     private fun workout(r: JsonObject) = Workout(r.string("id"),r.string("athlete_id"),r.string("target_date"),WorkoutType.valueOf(r.string("workout_type")),r.double("target_distance_km"),r.int("target_duration_minutes"),r.string("target_pace"),r.string("target_hr_zone"),r.string("description"),WorkoutStatus.valueOf(r.string("status")))
     private fun race(r: JsonObject) = RaceEvent(r.string("id"),r.string("athlete_id"),r.string("name"),r.string("date"),r.string("modality"),r.nullable("target_time"),RacePriority.valueOf(r.string("priority")))
-    private fun execution(r: JsonObject) = WorkoutExecution(r.string("id"),r.nullable("prescribed_workout_id"),r.string("athlete_id"),r.string("execution_date"),r.double("actual_distance_km"),r.int("actual_duration_seconds"),r.string("actual_pace"),r.nullable("actual_avg_hr")?.toIntOrNull(),r.int("pse"),r.nullable("encrypted_gps_data_json"),r.nullable("comments"))
+    private fun execution(r: JsonObject) = WorkoutExecution(r.string("id"),r.nullable("prescribed_workout_id"),r.string("athlete_id"),r.string("execution_date"),r.double("actual_distance_km"),r.int("actual_duration_seconds"),r.string("actual_pace"),r.nullable("actual_avg_hr")?.toIntOrNull(),r.int("pse"),r.nullable("encrypted_gps_data_json"),r.nullable("comments"),r.nullable("source_provider"),r.nullable("source_activity_id"))
     private fun sheetWorkout(r: JsonObject) = SheetWorkout(r.string("id"),r.string("sheet_id"),r.int("day_of_week"),WorkoutType.valueOf(r.string("workout_type")),r.double("target_distance_km"),r.int("target_duration_minutes"),r.string("target_pace"),r.string("target_hr_zone"),r.string("description"))
     private fun JsonObject.string(name: String) = nullable(name) ?: error("Resposta Neon sem $name")
     private fun JsonObject.nullable(name: String) = get(name)?.takeUnless { it.isJsonNull }?.asString
@@ -174,7 +175,9 @@ class NeonPostgresManager @Inject constructor() {
         "CREATE TABLE IF NOT EXISTS users (id VARCHAR(64) PRIMARY KEY,name VARCHAR(255) NOT NULL,email VARCHAR(255) UNIQUE NOT NULL,password_hash VARCHAR(255) NOT NULL,user_type VARCHAR(32) NOT NULL,coach_id VARCHAR(64),invite_code VARCHAR(32) UNIQUE)",
         "CREATE TABLE IF NOT EXISTS workouts (id VARCHAR(64) PRIMARY KEY,athlete_id VARCHAR(64) NOT NULL,target_date VARCHAR(32) NOT NULL,workout_type VARCHAR(32) NOT NULL,target_distance_km DOUBLE PRECISION NOT NULL,target_duration_minutes INT NOT NULL,target_pace VARCHAR(32) NOT NULL,target_hr_zone VARCHAR(32) NOT NULL,description TEXT NOT NULL,status VARCHAR(32) NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),name VARCHAR(160),route_type VARCHAR(32),effort INT,coach_id VARCHAR(64))",
         "CREATE TABLE IF NOT EXISTS race_events (id VARCHAR(64) PRIMARY KEY,athlete_id VARCHAR(64) NOT NULL,name VARCHAR(255) NOT NULL,date VARCHAR(32) NOT NULL,modality VARCHAR(32) NOT NULL,target_time VARCHAR(32),priority VARCHAR(32) NOT NULL)",
-        "CREATE TABLE IF NOT EXISTS workout_executions (id VARCHAR(64) PRIMARY KEY,prescribed_workout_id VARCHAR(64),athlete_id VARCHAR(64) NOT NULL,execution_date VARCHAR(32) NOT NULL,actual_distance_km DOUBLE PRECISION NOT NULL,actual_duration_seconds INT NOT NULL,actual_pace VARCHAR(32) NOT NULL,actual_avg_hr INT,pse INT NOT NULL,encrypted_gps_data_json TEXT,comments TEXT)",
+        "CREATE TABLE IF NOT EXISTS workout_executions (id VARCHAR(64) PRIMARY KEY,prescribed_workout_id VARCHAR(64),athlete_id VARCHAR(64) NOT NULL,execution_date VARCHAR(32) NOT NULL,actual_distance_km DOUBLE PRECISION NOT NULL,actual_duration_seconds INT NOT NULL,actual_pace VARCHAR(32) NOT NULL,actual_avg_hr INT,pse INT NOT NULL,encrypted_gps_data_json TEXT,comments TEXT,source_provider VARCHAR(32),source_activity_id VARCHAR(128))",
+        "ALTER TABLE workout_executions ADD COLUMN IF NOT EXISTS source_provider VARCHAR(32)",
+        "ALTER TABLE workout_executions ADD COLUMN IF NOT EXISTS source_activity_id VARCHAR(128)",
         "CREATE TABLE IF NOT EXISTS training_sheets (id VARCHAR(64) PRIMARY KEY,coach_id VARCHAR(64) NOT NULL,title VARCHAR(255) NOT NULL,description TEXT,created_at VARCHAR(32) NOT NULL)",
         "CREATE TABLE IF NOT EXISTS sheet_workouts (id VARCHAR(64) PRIMARY KEY,sheet_id VARCHAR(64) NOT NULL,day_of_week INT NOT NULL,workout_type VARCHAR(32) NOT NULL,target_distance_km DOUBLE PRECISION NOT NULL,target_duration_minutes INT NOT NULL,target_pace VARCHAR(32) NOT NULL,target_hr_zone VARCHAR(32) NOT NULL,description TEXT NOT NULL)"
     ) }

@@ -45,7 +45,6 @@ class AuthViewModel @Inject constructor(
                 val result = userRepository.loginUser(email, pass)
 
                 result.onSuccess { user ->
-                    encryptedStorageManager.saveAuthToken("jwt_token_${user.id}")
                     _uiState.value = AuthUiState.Authenticated(user)
                 }.onFailure { e ->
                     _uiState.value = AuthUiState.Error(e.message ?: "Falha na autenticação.")
@@ -63,7 +62,6 @@ class AuthViewModel @Inject constructor(
             try {
                 val result = userRepository.registerUser(name, email, pass, userType)
                 result.onSuccess { user ->
-                    encryptedStorageManager.saveAuthToken("jwt_token_${user.id}")
                     _uiState.value = AuthUiState.Authenticated(user)
                 }.onFailure { e ->
                     _uiState.value = AuthUiState.Error(e.message ?: "Erro ao cadastrar conta.")
@@ -90,5 +88,10 @@ class AuthViewModel @Inject constructor(
                 _uiState.value = AuthUiState.Error(t.message ?: "Erro ao vincular treinador.")
             }
         }
+    }
+
+    fun logout() {
+        encryptedStorageManager.clearAuthToken()
+        _uiState.value = AuthUiState.Idle
     }
 }

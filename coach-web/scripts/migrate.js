@@ -23,6 +23,7 @@ try {
   await client.query(await readFile(resolve('../database/migrations/002_coach_web.sql'), 'utf8'))
   await client.query(await readFile(resolve('../database/migrations/003_workout_timestamps.sql'), 'utf8'))
   await client.query(await readFile(resolve('../database/migrations/004_normalize_race_dates.sql'), 'utf8'))
+  await client.query(await readFile(resolve('../database/migrations/005_strava_integration.sql'), 'utf8'))
   await client.query('COMMIT')
   console.log('Migrações do painel aplicadas com sucesso.')
 } catch (error) {

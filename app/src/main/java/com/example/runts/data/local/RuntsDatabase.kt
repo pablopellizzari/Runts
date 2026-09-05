@@ -24,7 +24,7 @@ import com.example.runts.data.local.entity.WorkoutExecutionEntity
         TrainingSheetEntity::class,
         SheetWorkoutEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

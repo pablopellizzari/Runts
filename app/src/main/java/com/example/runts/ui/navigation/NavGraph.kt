@@ -35,6 +35,7 @@ import com.example.runts.ui.screens.WorkoutLogScreen
 import com.example.runts.ui.viewmodel.AthleteDashboardViewModel
 import com.example.runts.ui.viewmodel.AthleteStatsViewModel
 import com.example.runts.ui.viewmodel.AuthViewModel
+import com.example.runts.ui.viewmodel.IntegrationsViewModel
 import com.example.runts.ui.viewmodel.RaceCalendarViewModel
 import com.example.runts.ui.viewmodel.WorkoutDetailViewModel
 import com.example.runts.ui.viewmodel.WorkoutLogViewModel
@@ -234,12 +235,15 @@ fun RuntsNavGraph(
             }
 
             composable(Screen.Integrations.route) {
+                val integrationsViewModel: IntegrationsViewModel = hiltViewModel()
                 IntegrationsScreen(
+                    viewModel = integrationsViewModel,
                     onBack = { navController.popBackStack() }
                 )
             }
 
             composable(Screen.Profile.route) {
+                val authViewModel: AuthViewModel = hiltViewModel()
                 ProfileScreen(
                     currentUser = currentUser,
                     userType = UserType.ATHLETE,
@@ -248,6 +252,7 @@ fun RuntsNavGraph(
                     onNavigateToIntegrations = { navController.navigate(Screen.Integrations.route) },
                     onNavigateToLinkCoach = { navController.navigate(Screen.AthleteLink.route) },
                     onLogout = {
+                        authViewModel.logout()
                         currentUser = null
                         navController.navigate(Screen.Login.route) {
                             popUpTo(0) { inclusive = true }

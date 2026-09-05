@@ -84,6 +84,7 @@ fun WorkoutLogScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val prescribedWorkout by viewModel.prescribedWorkout.collectAsState()
+    val suggestedStravaActivity by viewModel.suggestedStravaActivity.collectAsState()
     LaunchedEffect(state) { if (state is WorkoutLogUiState.Saved) onSaveSuccess() }
     LaunchedEffect(prescribedWorkoutId) { viewModel.loadPrescription(prescribedWorkoutId) }
     var isLinked by remember { mutableStateOf(true) }
@@ -94,9 +95,18 @@ fun WorkoutLogScreen(
     var selectedPse by remember { mutableIntStateOf(5) }
     var comments by remember { mutableStateOf("") }
     var defaultsLoaded by remember { mutableStateOf(false) }
+    var appliedStravaActivityId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(prescribedWorkout?.id) {
-        prescribedWorkout?.takeIf { !defaultsLoaded }?.let { workout ->
+    LaunchedEffect(prescribedWorkout?.id, suggestedStravaActivity?.externalId) {
+        val activity = suggestedStravaActivity
+        if (activity != null && appliedStravaActivityId != activity.externalId) {
+            distance = (activity.distanceMeters / 1000.0).toString()
+            duration = TrainingRules.durationText(activity.movingTimeSeconds)
+            pace = activity.pace.orEmpty()
+            hr = activity.averageHeartRate?.toString().orEmpty()
+            appliedStravaActivityId = activity.externalId
+            defaultsLoaded = true
+        } else prescribedWorkout?.takeIf { !defaultsLoaded }?.let { workout ->
             distance = workout.targetDistanceKm.toString()
             duration = TrainingRules.durationText(workout.targetDurationMinutes * 60)
             pace = workout.targetPace
@@ -152,6 +162,17 @@ fun WorkoutLogScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        suggestedStravaActivity?.let { activity ->
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = RuntsDarkSurface)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("ATIVIDADE ENCONTRADA NO STRAVA", color = RuntsRedPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(activity.name, color = TextWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                    Text("Os dados abaixo foram preenchidos automaticamente. Revise e salve para concluir o treino.", color = TextGray, fontSize = 11.sp, lineHeight = 15.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         // Linha Distância e Duração
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -312,7 +333,9 @@ fun WorkoutLogScreen(
                     pace = pace,
                     avgHr = hrVal,
                     pse = selectedPse,
-                    comments = comments.ifBlank { null }
+                    comments = comments.ifBlank { null },
+                    sourceProvider = suggestedStravaActivity?.provider,
+                    sourceActivityId = suggestedStravaActivity?.externalId
                 )
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),

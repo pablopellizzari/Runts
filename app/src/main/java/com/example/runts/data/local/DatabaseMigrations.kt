@@ -8,5 +8,10 @@ object DatabaseMigrations {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE training_sheets ADD COLUMN pendingSync INTEGER NOT NULL DEFAULT 0")
         }
+    }, object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE workout_executions ADD COLUMN sourceProvider TEXT")
+            db.execSQL("ALTER TABLE workout_executions ADD COLUMN sourceActivityId TEXT")
+        }
     })
 }

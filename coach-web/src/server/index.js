@@ -2,9 +2,23 @@ import 'dotenv/config'
 import bcrypt from 'bcryptjs'
 import cors from 'cors'
 import express from 'express'
+import { waitUntil } from '@vercel/functions'
 import { randomUUID } from 'node:crypto'
-import { authenticate, createToken } from './auth.js'
+import { authenticate, authenticateAthlete, createStravaState, createToken, verifyStravaState } from './auth.js'
 import { requireDatabase, transaction } from './db.js'
+import {
+  authorizationUrl,
+  connectionStatus,
+  disconnectStrava,
+  ensureStravaSchema,
+  ensureWebhookSubscription,
+  exchangeAuthorizationCode,
+  processWebhookEvent,
+  saveConnection,
+  suggestedActivity,
+  syncActivities,
+  verifyWebhookToken,
+} from './strava.js'
 import { credentialsSchema, registrationSchema, workoutSchema } from './validation.js'
 
 const app = express()
@@ -14,10 +28,17 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN?.split(',') || ['http://localho
 app.use(express.json({ limit: '256kb' }))
 
 const publicUser = ({ password_hash: _, ...user }) => user
+const background = promise => {
+  if (process.env.VERCEL) waitUntil(promise)
+  else promise.catch(error => console.error('[strava:background]', error))
+}
+
+const oauthPage = (success, message) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Runts + Strava</title><style>body{margin:0;background:#0d0d0e;color:#fff;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh}.card{width:min(88vw,420px);padding:32px;border:1px solid #333;border-radius:18px;background:#171719;text-align:center}.mark{color:${success ? '#55c878' : '#ff2525'};font-size:42px}h1{font-size:24px}p{color:#aaa;line-height:1.55}a{display:block;margin-top:24px;padding:14px 18px;border-radius:999px;background:#ff2020;color:#fff;text-decoration:none;font-weight:800}</style></head><body><main class="card"><div class="mark">${success ? '✓' : '!'}</div><h1>${success ? 'Strava conectado' : 'Não foi possível conectar'}</h1><p>${message}</p><a href="runts://strava-connected">VOLTAR AO RUNTS</a></main></body></html>`
 
 app.get('/api/health', async (_req, res, next) => {
   try {
     await requireDatabase().query('SELECT updated_at FROM workouts LIMIT 0')
+    await ensureStravaSchema()
     res.json({ ok: true })
   } catch (error) { next(error) }
 })
@@ -48,6 +69,88 @@ app.post('/api/auth/login', async (req, res, next) => {
     }
     res.json({ token: createToken(user), user: publicUser(user) })
   } catch (error) { next(error) }
+})
+
+app.post('/api/athlete/auth/login', async (req, res, next) => {
+  try {
+    const data = credentialsSchema.parse(req.body)
+    const { rows } = await requireDatabase().query('SELECT * FROM users WHERE lower(email)=lower($1) LIMIT 1', [data.email])
+    const user = rows[0]
+    if (!user || user.user_type !== 'ATHLETE' || !(await bcrypt.compare(data.password, user.password_hash))) {
+      throw Object.assign(new Error('E-mail ou senha incorretos.'), { status: 401 })
+    }
+    res.json({ token: createToken(user), user: publicUser(user) })
+  } catch (error) { next(error) }
+})
+
+app.post('/api/athlete/auth/register', async (req, res, next) => {
+  try {
+    const data = registrationSchema.parse(req.body)
+    const id = randomUUID()
+    const passwordHash = await bcrypt.hash(data.password, 12)
+    const { rows } = await requireDatabase().query(
+      `INSERT INTO users (id,name,email,password_hash,user_type,timezone)
+       VALUES ($1,$2,lower($3),$4,'ATHLETE',$5)
+       RETURNING id,name,email,user_type,coach_id,invite_code,timezone`,
+      [id, data.name, data.email, passwordHash, data.timezone],
+    )
+    res.status(201).json({ token: createToken(rows[0]), user: rows[0] })
+  } catch (error) { next(error) }
+})
+
+app.get('/api/integrations/strava/callback', async (req, res) => {
+  try {
+    if (req.query.error) throw new Error('A autorização foi cancelada no Strava.')
+    if (!req.query.code || !req.query.state) throw new Error('O Strava não retornou uma autorização válida.')
+    const athleteId = verifyStravaState(req.query.state)
+    const token = await exchangeAuthorizationCode(req.query.code)
+    await saveConnection(athleteId, token)
+    background(Promise.all([syncActivities(athleteId), ensureWebhookSubscription()]))
+    res.type('html').send(oauthPage(true, 'Sua conta foi autorizada e a primeira sincronização foi iniciada.'))
+  } catch (error) {
+    console.error('[strava:callback]', error)
+    res.status(400).type('html').send(oauthPage(false, 'Revise a autorização e tente novamente pela tela de Integrações.'))
+  }
+})
+
+app.get('/api/integrations/strava/health', (_req, res, next) => {
+  try {
+    authorizationUrl('configuration-check')
+    res.json({ configured: true })
+  } catch (error) { next(error) }
+})
+
+app.get('/api/integrations/strava/webhook', (req, res) => {
+  const mode = req.query['hub.mode']
+  const token = req.query['hub.verify_token']
+  const challenge = req.query['hub.challenge']
+  if (mode === 'subscribe' && verifyWebhookToken(token) && challenge) return res.json({ 'hub.challenge': challenge })
+  return res.status(403).json({ error: 'Verificação inválida.' })
+})
+
+app.post('/api/integrations/strava/webhook', (req, res) => {
+  res.status(200).json({ received: true })
+  background(processWebhookEvent(req.body))
+})
+
+app.get('/api/athlete/integrations/strava/status', authenticateAthlete, async (req, res, next) => {
+  try { res.json(await connectionStatus(req.athleteId)) } catch (error) { next(error) }
+})
+
+app.get('/api/athlete/integrations/strava/authorize', authenticateAthlete, (req, res, next) => {
+  try { res.json({ authorizationUrl: authorizationUrl(createStravaState(req.athleteId)) }) } catch (error) { next(error) }
+})
+
+app.post('/api/athlete/integrations/strava/sync', authenticateAthlete, async (req, res, next) => {
+  try { res.json(await syncActivities(req.athleteId)) } catch (error) { next(error) }
+})
+
+app.delete('/api/athlete/integrations/strava', authenticateAthlete, async (req, res, next) => {
+  try { await disconnectStrava(req.athleteId); res.status(204).end() } catch (error) { next(error) }
+})
+
+app.get('/api/athlete/workouts/:workoutId/strava-activity', authenticateAthlete, async (req, res, next) => {
+  try { res.json(await suggestedActivity(req.athleteId, req.params.workoutId)) } catch (error) { next(error) }
 })
 
 app.use('/api', authenticate)
@@ -95,7 +198,8 @@ app.get('/api/students/:athleteId/workouts', async (req, res, next) => {
        (SELECT json_build_object(
           'id',e.id,'executionDate',e.execution_date,'distanceKm',e.actual_distance_km,
           'durationSeconds',e.actual_duration_seconds,'pace',e.actual_pace,
-          'avgHeartRate',e.actual_avg_hr,'pse',e.pse,'comments',e.comments
+          'avgHeartRate',e.actual_avg_hr,'pse',e.pse,'comments',e.comments,
+          'sourceProvider',e.source_provider,'sourceActivityId',e.source_activity_id
         ) FROM workout_executions e WHERE e.prescribed_workout_id=w.id
           ORDER BY e.execution_date DESC LIMIT 1) AS execution
        FROM workouts w LEFT JOIN workout_segments s ON s.workout_id=w.id
